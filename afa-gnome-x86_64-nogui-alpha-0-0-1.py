@@ -124,6 +124,7 @@ def post_disk():
 
     print("By default, your system will be in English - with the keyboard US. You can again, change this at a later data via GNOME settings.")
     os.system('arch-chroot /mnt /bin/bash -c "echo LANG=en_US.UTF-8 > /etc/locale.conf"')
+    os.system('arch-chroot /mnt /bin/bash -c "sed -i \'s/#en_US.UTF-8/en_US.UTF-8/\' /etc/locale.gen"')
     os.system('arch-chroot /mnt /bin/bash -c "locale-gen"')
 
     print("What would you like your system to be called?")
@@ -131,6 +132,8 @@ def post_disk():
     os.system(f'arch-chroot /mnt /bin/bash -c "echo {user_hostname} > /etc/hostname"')
 
     os.system(f'arch-chroot /mnt /bin/bash -c "mkinitcpio -P"')
+
+    os.system('arch-chroot /mnt /bin/bash -c "sed -i \'s/# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/\' /etc/sudoers"')
     
     print("What would you like your root password to be? (This is for sudo commands!)")
     user_root_password = input("Input here: ")
@@ -146,11 +149,36 @@ def post_disk():
 
     os.system(f'arch-chroot /mnt /bin/bash -c "bootctl install"')
 
+    # Configure systemd-boot
+    print("Configuring systemd-boot...")
+
+    # Create bootloader config (NO leading spaces!)
+    bootloader_config = """default arch.conf
+    timeout 4
+    console-mode max
+    editor no"""
+
+    os.system(f'arch-chroot /mnt /bin/bash -c "echo \'{bootloader_config}\' > /boot/loader/loader.conf"')
+
+    # Get root partition PARTUUID and create boot entry
+    try:
+        root_partuuid = subprocess.check_output(['blkid', '-s', 'PARTUUID', '-o', 'value', part3]).decode().strip()
+        
+        arch_entry = f"""title Arch Linux
+    linux /vmlinuz-linux
+    initrd /initramfs-linux.img
+    options root=PARTUUID={root_partuuid} rw"""
+        
+        os.system(f'arch-chroot /mnt /bin/bash -c "echo \'{arch_entry}\' > /boot/loader/entries/arch.conf"')
+        print("Boot configuration completed successfully!")
+    
+    except Exception as e:
+        print(f"Error creating boot entry: {e}")
+        sys.exit("BOOT_CONFIG_FAILED")
+
     os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S gnome gdm gnome-tweaks gnome-shell-extensions --noconfirm"')
     os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable gdm"')
-
-    os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S git base-devel --noconfirm"')
-    os.system(f'arch-chroot /mnt /bin/bash -c "git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si --noconfirm && cd /"')
+    os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"')
 
     print("Preparing to reboot! Once the screen goes fully black, unplug your USB!")
     time.sleep(5)
