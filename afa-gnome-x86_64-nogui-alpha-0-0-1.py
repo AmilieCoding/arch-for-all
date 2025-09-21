@@ -149,3 +149,5 @@ def post_disk():
 def main():
     pre_disk()
     post_disk()
+
+main()
