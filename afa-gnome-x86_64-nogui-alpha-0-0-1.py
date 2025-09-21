@@ -8,7 +8,14 @@ import sys
 import subprocess
 import time
 
+disk_selected = ""
+part1 = ""
+part2 = ""
+part3 = ""
+
 def pre_disk():
+    global disk_selected, part1, part2, part3 
+
     # System needs to have internet in order to continue with installation.
     def check_internet():
         try:
@@ -58,18 +65,22 @@ def pre_disk():
     print("!!! THE FOLLOWING ACTIONS WILL WIPE THIS DISK COMPLETELY. THERE IS NO TURNING BACK.")
     disk_confirmation = input("ARE YOU COMPLETELY SURE? [Y/n]").lower()
 
+
     # This is the dangerous section! This actually wipes the disk! DO NOT CALL WITHOUT PRIOR CONFIRMATION AND ENSURING YOU NEED IT.
     def disk_partitioning_procedure():
         global disk_selected
         sfdisk_script = f"""
         label: gpt
-        ,1G,ef02
-        ,8G,8200
-        ,,8300
+        size=1G, type=uefi
+        size=8G, type=swap
+        type=linux
         """
+
 
         print(f"Now writing the partition table to {disk_selected}!")
         os.system(f"echo '{sfdisk_script}' | sfdisk {disk_selected}")
+        os.system(f"partprobe {disk_selected}")
+        time.sleep(1)
 
         # Actually format the partitions to the required selection.
         # Includes checks for nvmes, and general drives. NVMEs are different for some reason.
@@ -82,13 +93,12 @@ def pre_disk():
             part2 = f"{disk_selected}2"
             part3 = f"{disk_selected}3"
 
+        os.system(f"mkdir /mnt/boot")
         os.system(f"mkfs.fat -F32 {part1}")
         os.system(f"mkswap {part2}")
         os.system(f"mkfs.ext4 {part3}")
 
         # Mounting users drives. Prepare for completion of drive section, the dangerous section.
-        os.system(f"mkdir /mnt")
-        os.system(f"mkdir /mnt/boot")
         os.system(f"swapon {part2}")
         os.system(f"mount {part3} /mnt")
         os.system(f"mount {part1} /mnt/boot")
