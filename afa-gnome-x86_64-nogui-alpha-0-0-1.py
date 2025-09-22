@@ -68,19 +68,19 @@ def pre_disk():
 
     # This is the dangerous section! This actually wipes the disk! DO NOT CALL WITHOUT PRIOR CONFIRMATION AND ENSURING YOU NEED IT.
     def disk_partitioning_procedure():
-        global disk_selected
-        sfdisk_script = f"""
-        label: gpt
+        global disk_selected, part1, part2, part3
+        sfdisk_script = f"""label: gpt
         size=1G, type=uefi
         size=8G, type=swap
-        type=linux
-        """
-
+        type=linux"""
 
         print(f"Now writing the partition table to {disk_selected}!")
-        os.system(f"echo '{sfdisk_script}' | sfdisk {disk_selected}")
+        # Write the script to a file first to avoid shell escaping issues
+        with open('/tmp/partition_script', 'w') as f:
+            f.write(sfdisk_script)
+        os.system(f"sfdisk {disk_selected} < /tmp/partition_script")
         os.system(f"partprobe {disk_selected}")
-        time.sleep(1)
+        time.sleep(2)
 
         # Actually format the partitions to the required selection.
         # Includes checks for nvmes, and general drives. NVMEs are different for some reason.
@@ -93,15 +93,17 @@ def pre_disk():
             part2 = f"{disk_selected}2"
             part3 = f"{disk_selected}3"
 
-        os.system(f"mkdir -p /mnt/boot")
+        print("Formatting partitions...")
         os.system(f"mkfs.fat -F32 {part1}")
         os.system(f"mkswap {part2}")
         os.system(f"mkfs.ext4 {part3}")
 
         # Mounting users drives. Prepare for completion of drive section, the dangerous section.
-        os.system(f"swapon {part2}")
+        print("Mounting partitions...")
         os.system(f"mount {part3} /mnt")
+        os.system(f"mkdir -p /mnt/boot")
         os.system(f"mount {part1} /mnt/boot")
+        os.system(f"swapon {part2}")
 
     if disk_confirmation == 'n':
         sys.exit("DENY_DISK_MODIFICATION")
@@ -112,7 +114,7 @@ def post_disk():
     # Installing core user packages.
     print("Beginning installation of core packages! Hold tight!")
     time.sleep(3)
-    os.system(f"pacstrap -K /mnt linux linux-firmware nano man man-db sof-firmware dosfstools e2fsprogs ntfs-3g networkmanager")
+    os.system(f"pacstrap -K /mnt base base-devel linux linux-firmware nano man man-db sof-firmware dosfstools e2fsprogs ntfs-3g networkmanager")
 
     # Fstab Generation
     os.system(f"genfstab -U /mnt >> /mnt/etc/fstab")
@@ -148,8 +150,9 @@ def post_disk():
     user_password = input("Input here: ")
     os.system(f'arch-chroot /mnt /bin/bash -c "echo {user_username}:{user_password} | chpasswd"')
 
-    os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S grub"')
-    os.system(f'arch-chroot /mnt /bin/bash -c "echo grub-install --target=x86_64-efi --efi-directory=/mnt/boot --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg')
+    os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S --noconfirm efibootmgr grub"')
+    os.system('arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB"')
+    os.system('arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"')
 
     os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S gnome gdm gnome-tweaks gnome-shell-extensions --noconfirm"')
     os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable gdm"')
