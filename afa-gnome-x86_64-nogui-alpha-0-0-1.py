@@ -80,7 +80,7 @@ def pre_disk():
         print(f"Now writing the partition table to {disk_selected}!")
         os.system(f"echo '{sfdisk_script}' | sfdisk {disk_selected}")
         os.system(f"partprobe {disk_selected}")
-        time.sleep(1)·
+        time.sleep(1)
 
         # Actually format the partitions to the required selection.
         # Includes checks for nvmes, and general drives. NVMEs are different for some reason.
