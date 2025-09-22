@@ -80,7 +80,7 @@ def pre_disk():
         print(f"Now writing the partition table to {disk_selected}!")
         os.system(f"echo '{sfdisk_script}' | sfdisk {disk_selected}")
         os.system(f"partprobe {disk_selected}")
-        time.sleep(1)
+        time.sleep(1)·
 
         # Actually format the partitions to the required selection.
         # Includes checks for nvmes, and general drives. NVMEs are different for some reason.
@@ -117,8 +117,9 @@ def post_disk():
     # Fstab Generation
     os.system(f"genfstab -U /mnt >> /mnt/etc/fstab")
 
-    user_timezone = input("What is your timezone? Please input in the format Continent/Capital - eg Europe/London, or Africa/Cairo")
     print("You may need to use timedatectl list-timezones for this, if you do not know what city to put - I recommend Europe/London - you can fix it post install!")
+    print("Please input in the format Continent/Capital - eg Europe/London, or Africa/Cairo")
+    user_timezone = input("What is your timezone?" )
     os.system(f'arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/{user_timezone} /etc/localtime"')
     os.system(f'arch-chroot /mnt /bin/bash -c "hwclock --systohc"')
 
@@ -147,34 +148,8 @@ def post_disk():
     user_password = input("Input here: ")
     os.system(f'arch-chroot /mnt /bin/bash -c "echo {user_username}:{user_password} | chpasswd"')
 
-    os.system(f'arch-chroot /mnt /bin/bash -c "bootctl install"')
-
-    # Configure systemd-boot
-    print("Configuring systemd-boot...")
-
-    # Create bootloader config (NO leading spaces!)
-    bootloader_config = """default arch.conf
-    timeout 4
-    console-mode max
-    editor no"""
-
-    os.system(f'arch-chroot /mnt /bin/bash -c "echo \'{bootloader_config}\' > /boot/loader/loader.conf"')
-
-    # Get root partition PARTUUID and create boot entry
-    try:
-        root_partuuid = subprocess.check_output(['blkid', '-s', 'PARTUUID', '-o', 'value', part3]).decode().strip()
-        
-        arch_entry = f"""title Arch Linux
-    linux /vmlinuz-linux
-    initrd /initramfs-linux.img
-    options root=PARTUUID={root_partuuid} rw"""
-        
-        os.system(f'arch-chroot /mnt /bin/bash -c "echo \'{arch_entry}\' > /boot/loader/entries/arch.conf"')
-        print("Boot configuration completed successfully!")
-    
-    except Exception as e:
-        print(f"Error creating boot entry: {e}")
-        sys.exit("BOOT_CONFIG_FAILED")
+    os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S grub"')
+    os.system(f'arch-chroot /mnt /bin/bash -c "echo grub-install --target=x86_64-efi --efi-directory=/mnt/boot --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg')
 
     os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S gnome gdm gnome-tweaks gnome-shell-extensions --noconfirm"')
     os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable gdm"')
