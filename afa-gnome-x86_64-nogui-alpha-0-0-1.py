@@ -93,7 +93,7 @@ def pre_disk():
             part2 = f"{disk_selected}2"
             part3 = f"{disk_selected}3"
 
-        os.system(f"mkdir /mnt/boot")
+        os.system(f"mkdir -p /mnt/boot")
         os.system(f"mkfs.fat -F32 {part1}")
         os.system(f"mkswap {part2}")
         os.system(f"mkfs.ext4 {part3}")
