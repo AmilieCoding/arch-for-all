@@ -115,6 +115,7 @@ def setup_archforall_branding():
     
     # Create custom os-release file
     os_release_content = '''NAME="Arch for All"
+    PRETTY_NAME = "Arch for All"
     VERSION="Rolling"
     ID=arch
     ID_LIKE=arch
@@ -129,11 +130,8 @@ def setup_archforall_branding():
     '''
     
         # Write the custom os-release
-    with open('/tmp/os-release', 'w') as f:
-        f.write(os_release_content)
-    
-    os.system('arch-chroot /mnt /bin/bash -c "cp /tmp/os-release /etc/os-release"')
-    
+    with open('/mnt/etc/os-release', 'w') as f:
+        f.write(os_release_content)    
     # Install fastfetch
     os.system('arch-chroot /mnt /bin/bash -c "pacman -S --noconfirm fastfetch"')
     
