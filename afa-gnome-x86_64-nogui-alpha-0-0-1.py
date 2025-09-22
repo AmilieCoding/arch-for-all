@@ -110,6 +110,35 @@ def pre_disk():
     else:
         disk_partitioning_procedure()
 
+def setup_archforall_branding():
+    print("Setting up Arch for All branding...")
+    
+    # Create custom os-release file
+    os_release_content = '''NAME="Arch for All"
+    VERSION="Rolling"
+    ID=arch
+    ID_LIKE=arch
+    BUILD_ID=rolling
+    ANSI_COLOR="38;2;23;147;209"
+    HOME_URL="https://archlinux.org/"
+    DOCUMENTATION_URL="https://wiki.archlinux.org/"
+    SUPPORT_URL="https://bbs.archlinux.org/"
+    BUG_REPORT_URL="https://bugs.archlinux.org/"
+    PRIVACY_POLICY_URL="https://terms.archlinux.org/docs/privacy-policy/"
+    LOGO=archlinux
+    '''
+    
+        # Write the custom os-release
+    with open('/tmp/os-release', 'w') as f:
+        f.write(os_release_content)
+    
+    os.system('arch-chroot /mnt /bin/bash -c "cp /tmp/os-release /etc/os-release"')
+    
+    # Install fastfetch
+    os.system('arch-chroot /mnt /bin/bash -c "pacman -S --noconfirm fastfetch"')
+    
+    print("Arch for All branding has been set up!")
+
 def post_disk():
     # Installing core user packages.
     print("Beginning installation of core packages! Hold tight!")
@@ -157,6 +186,8 @@ def post_disk():
     os.system(f'arch-chroot /mnt /bin/bash -c "pacman -S gnome gdm gnome-tweaks gnome-shell-extensions --noconfirm"')
     os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable gdm"')
     os.system(f'arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"')
+
+    setup_archforall_branding()
 
     print("Preparing to reboot! Once the screen goes fully black, unplug your USB!")
     time.sleep(5)
